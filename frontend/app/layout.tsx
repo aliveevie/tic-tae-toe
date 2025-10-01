@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Navbar } from "@/components/navbar";
+import { ClientLayout } from "@/components/client-layout";
 
 export const metadata: Metadata = {
   title: "Tic Tac Toe",
@@ -15,8 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Navbar />
-        {children}
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );
