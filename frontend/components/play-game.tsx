@@ -5,13 +5,14 @@ import { GameBoard } from "./game-board";
 import { abbreviateAddress, explorerAddress, formatStx } from "@/lib/stx-utils";
 import Link from "next/link";
 import { useStacks } from "@/hooks/use-stacks";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface PlayGameProps {
   game: Game;
+  onMoveComplete?: () => void;
 }
 
-export function PlayGame({ game }: PlayGameProps) {
+export function PlayGame({ game, onMoveComplete }: PlayGameProps) {
   const {
     userData,
     handleJoinGame,
@@ -20,6 +21,12 @@ export function PlayGame({ game }: PlayGameProps) {
   } = useStacks();
   const [board, setBoard] = useState(game.board);
   const [playedMoveIndex, setPlayedMoveIndex] = useState(-1);
+
+  // Update board when game changes (e.g., after computer move)
+  useEffect(() => {
+    setBoard(game.board);
+    setPlayedMoveIndex(-1);
+  }, [game.board]);
   
   if (!userData) return null;
 
@@ -57,6 +64,13 @@ export function PlayGame({ game }: PlayGameProps) {
       await handlePlaySinglePlayer(game.id, playedMoveIndex);
     } else {
       await handlePlayGame(game.id, playedMoveIndex, nextMove);
+    }
+    
+    // Trigger refresh after move to show computer's response
+    if (onMoveComplete) {
+      setTimeout(() => {
+        onMoveComplete();
+      }, 3000); // Wait 3 seconds for transaction to process
     }
   }
 
