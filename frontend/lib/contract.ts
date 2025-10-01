@@ -5,13 +5,14 @@ import {
   fetchCallReadOnlyFunction,
   ListCV,
   OptionalCV,
+  principalCV,
   PrincipalCV,
   TupleCV,
   uintCV,
   UIntCV,
 } from "@stacks/transactions";
 
-const CONTRACT_ADDRESS = "ST3P49R8XXQWG69S66MZASYPTTGNDKK0WW32RRJDN";
+const CONTRACT_ADDRESS = "ST3AM1A56AK2C1XAFJ4115ZSV26EB49BVQ10MGCS0";
 const CONTRACT_NAME = "tic-tac-toe";
 
 type GameCV = {
@@ -21,6 +22,9 @@ type GameCV = {
   "bet-amount": UIntCV;
   board: ListCV<UIntCV>;
   winner: OptionalCV<PrincipalCV>;
+  "is-single-player": BooleanCV;
+  "player-one-symbol": UIntCV;
+  "is-draw": BooleanCV;
 };
 
 export type Game = {
@@ -31,6 +35,18 @@ export type Game = {
   "bet-amount": number;
   board: number[];
   winner: string | null;
+  "is-single-player": boolean;
+  "player-one-symbol": number;
+  "is-draw": boolean;
+};
+
+export type PlayerStats = {
+  "games-played": number;
+  "games-won": number;
+  "games-lost": number;
+  "games-drawn": number;
+  "total-bet": number;
+  "total-winnings": number;
 };
 
 export enum Move {
@@ -106,6 +122,9 @@ export async function getGame(gameId: number) {
     board: gameCV["board"].value.map((cell) => parseInt(cell.value.toString())),
     winner:
       gameCV["winner"].type === "some" ? gameCV["winner"].value.value : null,
+    "is-single-player": cvToValue(gameCV["is-single-player"]),
+    "player-one-symbol": parseInt(gameCV["player-one-symbol"].value.toString()),
+    "is-draw": cvToValue(gameCV["is-draw"]),
   };
   return game;
 }
@@ -145,4 +164,65 @@ export async function play(gameId: number, moveIndex: number, move: Move) {
   };
 
   return txOptions;
+}
+
+export async function createSinglePlayerGame(
+  betAmount: number,
+  playerSymbol: Move,
+  moveIndex: number
+) {
+  const txOptions = {
+    contractAddress: CONTRACT_ADDRESS,
+    contractName: CONTRACT_NAME,
+    functionName: "create-single-player-game",
+    functionArgs: [uintCV(betAmount), uintCV(playerSymbol), uintCV(moveIndex)],
+  };
+
+  return txOptions;
+}
+
+export async function playSinglePlayer(gameId: number, moveIndex: number) {
+  const txOptions = {
+    contractAddress: CONTRACT_ADDRESS,
+    contractName: CONTRACT_NAME,
+    functionName: "play-single-player",
+    functionArgs: [uintCV(gameId), uintCV(moveIndex)],
+  };
+
+  return txOptions;
+}
+
+export async function getPlayerStats(address: string): Promise<PlayerStats> {
+  const statsCV = await fetchCallReadOnlyFunction({
+    contractAddress: CONTRACT_ADDRESS,
+    contractName: CONTRACT_NAME,
+    functionName: "get-player-stats",
+    functionArgs: [principalCV(address)],
+    senderAddress: CONTRACT_ADDRESS,
+    network: STACKS_TESTNET,
+  });
+
+  const statsTuple = statsCV as TupleCV;
+  const stats: PlayerStats = {
+    "games-played": parseInt(
+      (statsTuple.value["games-played"] as UIntCV).value.toString()
+    ),
+    "games-won": parseInt(
+      (statsTuple.value["games-won"] as UIntCV).value.toString()
+    ),
+    "games-lost": parseInt(
+      (statsTuple.value["games-lost"] as UIntCV).value.toString()
+    ),
+    "games-drawn": parseInt(
+      (statsTuple.value["games-drawn"] as UIntCV).value.toString()
+    ),
+    "total-bet": parseInt(
+      (statsTuple.value["total-bet"] as UIntCV).value.toString()
+    ),
+    "total-winnings": parseInt(
+      (statsTuple.value["total-winnings"] as UIntCV).value.toString()
+    ),
+  };
+
+  return stats;
 }
