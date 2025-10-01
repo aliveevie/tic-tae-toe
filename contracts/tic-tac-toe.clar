@@ -213,16 +213,16 @@
                 (computer-move-index (get-computer-move game-board-with-move computer-symbol))
                 (game-board (unwrap! (replace-at? game-board-with-move computer-move-index computer-symbol) (err ERR_INVALID_MOVE)))
                 (computer-won (has-won game-board))
-                (is-board-full (is-board-full game-board))
+                (board-is-full (is-board-full game-board))
                 (final-game-data (merge original-game-data {
                     board: game-board,
                     winner: (if computer-won (some THIS_CONTRACT) none),
-                    is-draw: (if (and (not computer-won) is-board-full) true false)
+                    is-draw: (if (and (not computer-won) board-is-full) true false)
                 }))
             )
                 (if computer-won
                     (update-player-stats-on-loss contract-caller)
-                    (if is-board-full
+                    (if board-is-full
                         (begin
                             (try! (as-contract (stx-transfer? (get bet-amount original-game-data) tx-sender contract-caller)))
                             (update-player-stats-on-draw contract-caller)
@@ -248,12 +248,12 @@
         (expected-move (if is-player-one-turn u1 u2))
         (game-board (unwrap! (replace-at? original-board move-index move) (err ERR_INVALID_MOVE)))
         (is-now-winner (has-won game-board))
-        (is-board-full (is-board-full game-board))
+        (board-is-full (is-board-full game-board))
         (game-data (merge original-game-data {
             board: game-board,
             is-player-one-turn: (not is-player-one-turn),
             winner: (if is-now-winner (some player-turn) none),
-            is-draw: (if (and (not is-now-winner) is-board-full) true false)
+            is-draw: (if (and (not is-now-winner) board-is-full) true false)
         }))
     )
 
@@ -272,7 +272,7 @@
                 (get player-one game-data)
             ))
         )
-        (if is-board-full
+        (if board-is-full
             (begin
                 (try! (as-contract (stx-transfer? (get bet-amount game-data) tx-sender (get player-one game-data))))
                 (try! (as-contract (stx-transfer? (get bet-amount game-data) tx-sender (unwrap! (get player-two game-data) (err ERR_GAME_NOT_FOUND)))))
@@ -380,11 +380,15 @@
 )
 
 (define-private (can-win-at (board (list 9 uint)) (symbol uint) (index uint))
-    (let ((cell-value (unwrap! (element-at? board index) u0)))
-        (if (is-eq cell-value u0)
-            (has-won (unwrap! (replace-at? board index symbol) (list u0 u0 u0 u0 u0 u0 u0 u0 u0)))
+    (match (element-at? board index)
+        cell-value (if (is-eq cell-value u0)
+            (match (replace-at? board index symbol)
+                test-board (has-won test-board)
+                false
+            )
             false
         )
+        false
     )
 )
 
