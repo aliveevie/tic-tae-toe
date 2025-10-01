@@ -12,7 +12,7 @@ import {
   UIntCV,
 } from "@stacks/transactions";
 
-const CONTRACT_ADDRESS = "ST3AM1A56AK2C1XAFJ4115ZSV26EB49BVQ10MGCS0";
+const CONTRACT_ADDRESS = "ST3PF13W7Z0RRM42A8VZRVFQ75SV1K26RXEP8YGKJ";
 const CONTRACT_NAME = "tic-tac-toe";
 
 type GameCV = {
@@ -67,8 +67,7 @@ export const EMPTY_BOARD = [
   Move.EMPTY,
 ];
 
-export async function getAllGames() {
-  // Fetch the latest-game-id from the contract
+export async function getLatestGameId(): Promise<number> {
   const latestGameIdCV = (await fetchCallReadOnlyFunction({
     contractAddress: CONTRACT_ADDRESS,
     contractName: CONTRACT_NAME,
@@ -78,8 +77,12 @@ export async function getAllGames() {
     network: STACKS_TESTNET,
   })) as UIntCV;
 
-  // Convert the uintCV to a JS/TS number type
-  const latestGameId = parseInt(latestGameIdCV.value.toString());
+  return parseInt(latestGameIdCV.value.toString());
+}
+
+export async function getAllGames() {
+  // Fetch the latest-game-id from the contract
+  const latestGameId = await getLatestGameId();
 
   // Loop from 0 to latestGameId-1 and fetch the game details for each game
   const games: Game[] = [];
