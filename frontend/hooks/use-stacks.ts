@@ -1,4 +1,11 @@
-import { createNewGame, joinGame, Move, play } from "@/lib/contract";
+import {
+  createNewGame,
+  createSinglePlayerGame,
+  joinGame,
+  Move,
+  play,
+  playSinglePlayer,
+} from "@/lib/contract";
 import { getStxBalance } from "@/lib/stx-utils";
 import {
   AppConfig,
@@ -142,6 +149,70 @@ export function useStacks() {
     }
   }, [userData]);
 
+  async function handleCreateSinglePlayerGame(
+    betAmount: number,
+    playerSymbol: Move,
+    moveIndex: number
+  ) {
+    if (typeof window === "undefined") return;
+    if (moveIndex < 0 || moveIndex > 8) {
+      window.alert("Invalid move. Please make a valid move.");
+      return;
+    }
+    if (betAmount === 0) {
+      window.alert("Please make a bet");
+      return;
+    }
+
+    try {
+      if (!userData) throw new Error("User not connected");
+      const txOptions = await createSinglePlayerGame(
+        betAmount,
+        playerSymbol,
+        moveIndex
+      );
+      await openContractCall({
+        ...txOptions,
+        appDetails,
+        onFinish: (data) => {
+          console.log(data);
+          window.alert("Game created! Computer has made its move.");
+        },
+        postConditionMode: PostConditionMode.Allow,
+      });
+    } catch (_err) {
+      const err = _err as Error;
+      console.error(err);
+      window.alert(err.message);
+    }
+  }
+
+  async function handlePlaySinglePlayer(gameId: number, moveIndex: number) {
+    if (typeof window === "undefined") return;
+    if (moveIndex < 0 || moveIndex > 8) {
+      window.alert("Invalid move. Please make a valid move.");
+      return;
+    }
+
+    try {
+      if (!userData) throw new Error("User not connected");
+      const txOptions = await playSinglePlayer(gameId, moveIndex);
+      await openContractCall({
+        ...txOptions,
+        appDetails,
+        onFinish: (data) => {
+          console.log(data);
+          window.alert("Move played! Computer has responded.");
+        },
+        postConditionMode: PostConditionMode.Allow,
+      });
+    } catch (_err) {
+      const err = _err as Error;
+      console.error(err);
+      window.alert(err.message);
+    }
+  }
+
   return {
     userData,
     stxBalance,
@@ -150,5 +221,7 @@ export function useStacks() {
     handleCreateGame,
     handleJoinGame,
     handlePlayGame,
+    handleCreateSinglePlayerGame,
+    handlePlaySinglePlayer,
   };
 }
