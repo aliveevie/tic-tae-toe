@@ -152,7 +152,8 @@ export function useStacks() {
   async function handleCreateSinglePlayerGame(
     betAmount: number,
     playerSymbol: Move,
-    moveIndex: number
+    moveIndex: number,
+    onSuccess?: (gameId: number) => void
   ) {
     if (typeof window === "undefined") return;
     if (moveIndex < 0 || moveIndex > 8) {
@@ -171,12 +172,32 @@ export function useStacks() {
         playerSymbol,
         moveIndex
       );
+      
       await openContractCall({
         ...txOptions,
         appDetails,
         onFinish: (data) => {
           console.log(data);
-          window.alert("Game created! Computer has made its move.");
+          window.alert("Game created! Computer has made its move. Redirecting...");
+          
+          // Get the new game ID after transaction
+          setTimeout(async () => {
+            try {
+              const { getLatestGameId } = await import("@/lib/contract");
+              const latestGameId = await getLatestGameId();
+              const newGameId = latestGameId - 1; // The created game will be one less than latest
+              
+              if (onSuccess) {
+                onSuccess(newGameId);
+              }
+            } catch (error) {
+              console.error("Error getting game ID:", error);
+              // Fallback: try game ID 0
+              if (onSuccess) {
+                onSuccess(0);
+              }
+            }
+          }, 1000);
         },
         postConditionMode: PostConditionMode.Allow,
       });
