@@ -5,19 +5,42 @@ import { useStacks } from "@/hooks/use-stacks";
 import { EMPTY_BOARD, Move } from "@/lib/contract";
 import { formatStx, parseStx } from "@/lib/stx-utils";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function CreateGame() {
   const { stxBalance, userData, connectWallet, handleCreateSinglePlayerGame } =
     useStacks();
+  const router = useRouter();
 
   const [betAmount, setBetAmount] = useState(0);
   const [board, setBoard] = useState(EMPTY_BOARD);
   const [playerSymbol, setPlayerSymbol] = useState<Move>(Move.X);
   const [gameMode, setGameMode] = useState<"single" | "multi">("single");
+  const [isCreating, setIsCreating] = useState(false);
 
   function onCellClick(index: number) {
     const tempBoard = [...EMPTY_BOARD];
     tempBoard[index] = playerSymbol;
+    
+    // If single player mode, show computer's move too
+    if (gameMode === "single") {
+      const computerSymbol = playerSymbol === Move.X ? Move.O : Move.X;
+      let computerMove = -1;
+      
+      // Simple AI: try center, then corners, then edges
+      const preferredMoves = [4, 0, 2, 6, 8, 1, 3, 5, 7];
+      for (const move of preferredMoves) {
+        if (move !== index && tempBoard[move] === Move.EMPTY) {
+          computerMove = move;
+          break;
+        }
+      }
+      
+      if (computerMove !== -1) {
+        tempBoard[computerMove] = computerSymbol;
+      }
+    }
+    
     setBoard(tempBoard);
   }
 
@@ -28,7 +51,22 @@ export default function CreateGame() {
       return;
     }
 
-    await handleCreateSinglePlayerGame(parseStx(betAmount), playerSymbol, moveIndex);
+    setIsCreating(true);
+    try {
+      await handleCreateSinglePlayerGame(
+        parseStx(betAmount),
+        playerSymbol,
+        moveIndex,
+        (gameId: number) => {
+          // Redirect to homepage to see all games
+          setTimeout(() => {
+            router.push("/");
+          }, 2000);
+        }
+      );
+    } finally {
+      setIsCreating(false);
+    }
   }
 
   return (
@@ -164,10 +202,18 @@ export default function CreateGame() {
             {userData ? (
               <button
                 type="button"
-                className="w-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 hover:from-cyan-600 hover:via-blue-600 hover:to-purple-600 text-white px-8 py-5 rounded-xl font-bold text-xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
+                className="w-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 hover:from-cyan-600 hover:via-blue-600 hover:to-purple-600 disabled:from-gray-500 disabled:to-gray-600 disabled:cursor-not-allowed text-white px-8 py-5 rounded-xl font-bold text-xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 disabled:scale-100"
                 onClick={onCreateGame}
+                disabled={isCreating}
               >
-                🎮 Create Game & Start Playing
+                {isCreating ? (
+                  <>
+                    <span className="inline-block animate-spin mr-2">⏳</span>
+                    Creating Game...
+                  </>
+                ) : (
+                  "🎮 Create Game & Start Playing"
+                )}
               </button>
             ) : (
               <button
